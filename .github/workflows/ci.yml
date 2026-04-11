@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  CARGO_TERM_COLOR: always
+  LINUX_TARGET: x86_64-unknown-linux-musl
+
+jobs:
+  build-test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install musl toolchain (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Add musl Rust target (Linux)
+        if: runner.os == 'Linux'
+        run: rustup target add ${{ env.LINUX_TARGET }}
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build (release, Linux musl)
+        if: runner.os == 'Linux'
+        run: cargo build --release --verbose --target ${{ env.LINUX_TARGET }}
+
+      - name: Build (release, Windows)
+        if: runner.os == 'Windows'
+        run: cargo build --release --verbose
+
+      - name: Run tests (Linux musl)
+        if: runner.os == 'Linux'
+        run: cargo test --verbose --target ${{ env.LINUX_TARGET }}
+
+      - name: Run tests (Windows)
+        if: runner.os == 'Windows'
+        run: cargo test --verbose

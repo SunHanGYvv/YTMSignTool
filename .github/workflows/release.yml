@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  LINUX_TARGET: x86_64-unknown-linux-musl
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            asset: ytm_sign_tool-linux-x86_64.tar.gz
+          - os: windows-latest
+            asset: ytm_sign_tool-windows-x86_64.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install musl toolchain (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Add musl Rust target (Linux)
+        if: runner.os == 'Linux'
+        run: rustup target add ${{ env.LINUX_TARGET }}
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build (release, Linux musl)
+        if: runner.os == 'Linux'
+        run: cargo build --release --verbose --target ${{ env.LINUX_TARGET }}
+
+      - name: Build (release, Windows)
+        if: runner.os == 'Windows'
+        run: cargo build --release --verbose
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: tar czvf "${{ matrix.asset }}" -C "target/${{ env.LINUX_TARGET }}/release" ytm_sign_tool
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        run: cp target/release/ytm_sign_tool.exe "${{ matrix.asset }}"
+        shell: bash
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: ${{ matrix.asset }}
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
