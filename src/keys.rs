@@ -32,6 +32,14 @@ impl SecureKeys {
         Ok(cfg)
     }
 
+    pub fn get_max_key_slot(&self) -> Option<usize> {
+        self.keys
+            .iter()
+            .filter(|k| !k.data.is_empty())
+            .map(|k| k.index as usize)
+            .max()
+    }
+
     pub fn get_key_by_index(&self, index: u8) -> Option<Vec<u8>> {
         for key in &self.keys {
             if key.index == index {

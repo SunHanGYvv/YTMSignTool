@@ -7,6 +7,7 @@ use crate::crypto::cmac_aes;
 use crate::image::{load_image, load_image_with_bin_base};
 use crate::keys::SecureKeys;
 use crate::types::{SecureGroup, SecureHeader, SecureSection};
+use crate::prepare::patch_prepare_firmware;
 use crate::secure_image::{
     generate_key_file, sign_firmware, validate_section_firmware_bounds, verify_firmware,
 };
@@ -68,7 +69,7 @@ pub enum Commands {
         #[arg(
             short,
             long,
-            help = "Unsigned firmware (HEX, BIN, S19) that contains key slots and lengths in Secure Boot Section from BVT"
+            help = "Firmware (HEX, BIN, S19) that contains key slots and lengths in Secure Boot Section from BVT"
         )]
         input: Option<String>,
         #[arg(
@@ -82,6 +83,30 @@ pub enum Commands {
             help = "Output JSON file path or directory"
         )]
         output: Option<String>,
+    },
+    #[command(
+        about = "Generate a prepare firmware image that will programming AES keys into HCU while executing"
+    )]
+    Prepare {
+        #[arg(short, long, help = "Keys configuration (JSON)")]
+        keys: String,
+        #[arg(
+            short,
+            long,
+            help = "Output file path or directory"
+        )]
+        output: Option<String>,
+        #[arg(
+            short = 't',
+            long,
+            help = "Output format: hex, bin, s19"
+        )]
+        format: Option<String>,
+        #[arg(
+            long = "template",
+            help = "Base prepare image (HEX, BIN, S19); omit to use the built-in template"
+        )]
+        template: Option<String>,
     },
     #[command(about = "Display configuration information")]
     Info {
@@ -238,6 +263,30 @@ fn resolve_keygen_output_path(input: Option<&str>, output: Option<&str>) -> anyh
                 Ok(Path::new(out).join(format!("{stem}_keys.json")))
             } else {
                 Ok(PathBuf::from(out))
+            }
+        }
+    }
+}
+
+fn resolve_prepare_output_path_and_format(
+    output: Option<&str>,
+    format: Option<&str>,
+) -> anyhow::Result<(PathBuf, String)> {
+    let default_infer = "prepare.hex";
+    match output {
+        None => {
+            let fmt = resolve_output_format(format, default_infer)?;
+            let ext = format_to_extension(&fmt);
+            Ok((std::env::current_dir()?.join(format!("prepare.{ext}")), fmt))
+        }
+        Some(out) => {
+            if output_path_means_directory(out) {
+                let fmt = resolve_output_format(format, default_infer)?;
+                let ext = format_to_extension(&fmt);
+                Ok((Path::new(out).join(format!("prepare.{ext}")), fmt))
+            } else {
+                let fmt = resolve_output_format(format, out)?;
+                Ok((PathBuf::from(out), fmt))
             }
         }
     }
@@ -503,6 +552,44 @@ pub fn cmd_keygen(
     Ok(())
 }
 
+pub fn cmd_prepare(
+    keys_path: &str,
+    output: Option<&str>,
+    format: Option<&str>,
+    template: Option<&str>,
+) -> anyhow::Result<()> {
+    let keys = SecureKeys::from_file(keys_path)?;
+
+    let (prepare_path, output_format) = resolve_prepare_output_path_and_format(output, format)?;
+    ensure_parent_dir_for_file(&prepare_path)?;
+    let custom_template = template.map(Path::new);
+    let patched = patch_prepare_firmware(&keys, custom_template)?;
+
+    let bin_region = if output_format == "bin" {
+        let bin_base = patched.get_min_address().unwrap_or(0);
+        let max_addr = patched.get_max_address().unwrap_or(0);
+        if max_addr < bin_base {
+            return Err(anyhow::anyhow!(
+                "cannot derive BIN size: max address 0x{:08X} < base 0x{:08X}",
+                max_addr,
+                bin_base
+            ));
+        }
+        let bin_size = (max_addr - bin_base + 1) as usize;
+        Some((bin_base, bin_size))
+    } else {
+        None
+    };
+
+    patched.write_image_format(&prepare_path, &output_format, bin_region)?;
+    info!(
+        "prepare: wrote {} (format: {})",
+        prepare_path.display(),
+        output_format
+    );
+    Ok(())
+}
+
 pub fn cmd_info(
     input: &str,
     keys_path: Option<&str>,
@@ -765,5 +852,57 @@ mod tests {
         assert!(Path::new("target/test/hex_keys.json").exists());
         cmd_keygen(Some("images/unsigned.s19"), None, Some("target/test/s19_keys.json")).unwrap();
         assert!(Path::new("target/test/s19_keys.json").exists());
+    }
+
+    #[test]
+    fn test_cmd_prepare_from_keys_matching_template() {
+        use crate::keys::SecureKey;
+        use crate::types::SecureKeyLen;
+
+        let template_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("images/prepare.hex");
+        let text = std::fs::read_to_string(&template_path).unwrap();
+        let img = crate::image::Image::parse(&text).unwrap();
+        let base = crate::prepare::find_hcu_user_keys_base(&img).unwrap();
+        const OFF_KEY_SIZE: u32 = 4;
+        const OFF_KEYS: u32 = 4 + 32 + 4;
+        const KEY_ROW_BYTES: usize = 32;
+        let slot = 0usize;
+        let ks = img.read_bytes(base + OFF_KEY_SIZE + slot as u32, 1)[0];
+        let klen = SecureKeyLen::from_u8(ks).unwrap();
+        let nbytes = klen.key_size_bytes();
+        let row = img.read_bytes(
+            base + OFF_KEYS + (slot * KEY_ROW_BYTES) as u32,
+            KEY_ROW_BYTES,
+        );
+        let key_hex = hex::encode_upper(&row[..nbytes]);
+
+        let keys = SecureKeys {
+            keys: (0u8..=31u8)
+                .map(|i| SecureKey {
+                    index: i,
+                    rindex: 31 - i,
+                    data: if i == 0 {
+                        key_hex.clone()
+                    } else {
+                        String::new()
+                    },
+                })
+                .collect(),
+        };
+        let keys_path = Path::new("target/test/prepare_cmd_slot0_keys.json");
+        if let Some(parent) = keys_path.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+        keys.write_to_file_pretty(keys_path).unwrap();
+
+        let out = Path::new("target/test/prepare_cmd_out.hex");
+        cmd_prepare(
+            keys_path.to_str().unwrap(),
+            Some(out.to_str().unwrap()),
+            None,
+            None,
+        )
+        .unwrap();
+        assert!(out.exists());
     }
 }

@@ -29,6 +29,15 @@ impl SecureKeyLen {
             _ => None,
         }
     }
+
+    pub fn from_key_byte_len(len: usize) -> Option<Self> {
+        match len {
+            16 => Some(Self::KeyLen128Bits),
+            24 => Some(Self::KeyLen192Bits),
+            32 => Some(Self::KeyLen256Bits),
+            _ => None,
+        }
+    }
 }
 
 impl Default for SecureKeyLen {

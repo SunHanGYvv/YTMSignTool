@@ -1,5 +1,6 @@
 mod cli;
 mod crypto;
+mod prepare;
 mod image;
 mod keys;
 mod secure_image;
@@ -7,7 +8,9 @@ mod types;
 
 use clap::Parser;
 
-use crate::cli::{cmd_convert, cmd_info, cmd_keygen, cmd_sign, cmd_verify, Cli, Commands};
+use crate::cli::{
+    cmd_convert, cmd_info, cmd_keygen, cmd_prepare, cmd_sign, cmd_verify, Cli, Commands,
+};
 
 fn init_logging(slient: bool) {
     use std::io::Write;
@@ -62,6 +65,19 @@ fn run(cli: Cli) -> anyhow::Result<()> {
         }
         Commands::Keygen { input, base, output } => {
             cmd_keygen(input.as_deref(), base.as_deref(), output.as_deref())?;
+        }
+        Commands::Prepare {
+            keys,
+            output,
+            format,
+            template,
+        } => {
+            cmd_prepare(
+                &keys,
+                output.as_deref(),
+                format.as_deref(),
+                template.as_deref(),
+            )?;
         }
         Commands::Info { input, keys, base } => {
             cmd_info(&input, keys.as_deref(), base.as_deref())?;
