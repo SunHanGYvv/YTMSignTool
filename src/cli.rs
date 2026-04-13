@@ -15,7 +15,7 @@ use crate::secure_image::{
 #[derive(Parser, Debug)]
 #[command(name = "ytm_sign_tool")]
 #[command(author = "HanG")]
-#[command(version = "0.1.0")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "YTM32 MCU Firmware Signing Tool for Secure Boot")]
 pub struct Cli {
     /// Slient mode

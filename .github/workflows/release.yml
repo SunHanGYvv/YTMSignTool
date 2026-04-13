@@ -65,6 +65,26 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Extract release notes from CHANGELOG
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v ver="$VERSION" '
+            /^## \[/ {
+              heading = "## [" ver "]"
+              if (index($0, heading) == 1) { flag = 1; print; next }
+              if (flag) exit
+            }
+            flag { print }
+          ' CHANGELOG.md > release_notes.md
+          if ! grep -q . release_notes.md; then
+            echo "No CHANGELOG section found for version ${VERSION} (expected heading: ## [${VERSION}])"
+            exit 1
+          fi
+
       - uses: actions/download-artifact@v4
         with:
           path: dist
@@ -73,5 +93,6 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           files: dist/*
+          body_path: release_notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -10,6 +10,30 @@ The format is inspired by [Keep a Changelog](https://keepachangelog.com/en/1.1.0
 
 ---
 
+## [0.1.1] - 2026-04-13
+
+### Added
+
+- **`prepare` subcommand**: generate HCU AES key programming firmware from a keys JSON file and a built-in Intel HEX template (`images/prepare.hex`).
+- **`prepare` pipeline**: locate `hcu_user_keys` region, patch key rows, ciphertext slots, and max slot; optional custom template path; output path and Intel HEX / Motorola SREC format selection.
+- Unit tests covering the prepare flow.
+
+### Removed
+
+- Legacy stock HEX filenames under `images/` (replaced by the single `prepare.hex` template).
+
+### 新增
+
+- **`prepare` 子命令**：根据密钥 JSON 与内置 Intel HEX 模板（`images/prepare.hex`）生成 HCU AES 密钥烧录固件。
+- **`prepare` 流程**：定位 `hcu_user_keys` 区，修补密钥行、密文槽位与最大槽位；可选自定义模板；可指定输出路径与 Intel HEX / Motorola SREC 格式。
+- 针对 prepare 流程的单元测试。
+
+### 移除
+
+- `images/` 下旧版示例 HEX 文件名（统一为单一 `prepare.hex` 模板）。
+
+---
+
 ## [0.1.0] - 2026-04-12
 
 ### Added
