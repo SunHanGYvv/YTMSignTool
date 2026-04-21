@@ -82,10 +82,7 @@ fn chunk_at_max(start: u32, bytes: &[u8], max_payload: usize) -> Vec<(u32, Vec<u
     let mut off = 0usize;
     while off < bytes.len() {
         let n = (bytes.len() - off).min(max_payload);
-        r.push((
-            start.wrapping_add(off as u32),
-            bytes[off..off + n].to_vec(),
-        ));
+        r.push((start.wrapping_add(off as u32), bytes[off..off + n].to_vec()));
         off += n;
     }
     r
@@ -171,7 +168,8 @@ fn srec_build_records(
         1u8
     };
     let chunks = export_payload_chunks(data, SREC_MAX_CHUNK);
-    let mut out: Vec<SrecRecord> = Vec::with_capacity(chunks.len() + 1 + usize::from(s0_header.is_some()));
+    let mut out: Vec<SrecRecord> =
+        Vec::with_capacity(chunks.len() + 1 + usize::from(s0_header.is_some()));
     if let Some(h) = s0_header {
         out.push(SrecRecord::S0(clamp_s0_header(h)));
     }
@@ -294,15 +292,8 @@ impl Image {
             "hex" => std::fs::write(path, self.to_hex())?,
             "s19" => {
                 let s0 = path.to_string_lossy();
-                let records = srec_build_records(
-                    &self.data,
-                    self.entry_point,
-                    Some(s0.as_ref()),
-                );
-                std::fs::write(
-                    path,
-                    generate_srec_file(&records).replace('\n', "\r\n"),
-                )?;
+                let records = srec_build_records(&self.data, self.entry_point, Some(s0.as_ref()));
+                std::fs::write(path, generate_srec_file(&records).replace('\n', "\r\n"))?;
             }
             "bin" => {
                 let (base, size) = bin_region.ok_or_else(|| {
@@ -460,14 +451,20 @@ mod tests {
         hf.write_image_format(&out, "s19", None).unwrap();
         let text = std::fs::read_to_string(&out).unwrap();
         let line0 = text.lines().next().unwrap().trim_end_matches('\r');
-        assert!(line0.starts_with("S0"), "file output should start with S0: {line0:?}");
+        assert!(
+            line0.starts_with("S0"),
+            "file output should start with S0: {line0:?}"
+        );
         let path_hex: String = out
             .to_string_lossy()
             .as_bytes()
             .iter()
             .map(|b| format!("{:02X}", b))
             .collect();
-        assert!(line0.contains(&path_hex), "S0 should encode output path: {line0:?}");
+        assert!(
+            line0.contains(&path_hex),
+            "S0 should encode output path: {line0:?}"
+        );
     }
 
     #[test]

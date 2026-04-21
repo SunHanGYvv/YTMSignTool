@@ -155,7 +155,12 @@ impl SecureGroup {
         let mut addrs = Vec::with_capacity(section_count as usize);
         for i in 0..section_count as usize {
             let o = 8 + i * 4;
-            addrs.push(u32::from_le_bytes([data[o], data[o + 1], data[o + 2], data[o + 3]]));
+            addrs.push(u32::from_le_bytes([
+                data[o],
+                data[o + 1],
+                data[o + 2],
+                data[o + 3],
+            ]));
         }
         Ok(Self {
             marker: u32::from_le_bytes([data[0], data[1], data[2], data[3]]),

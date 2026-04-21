@@ -76,11 +76,7 @@ fn generate_subkeys(key: &[u8], key_len: SecureKeyLen) -> anyhow::Result<([u8; 1
     Ok((k1, k2))
 }
 
-pub fn cmac_aes(
-    key: &[u8],
-    message: &[u8],
-    key_len: SecureKeyLen,
-) -> anyhow::Result<[u8; 16]> {
+pub fn cmac_aes(key: &[u8], message: &[u8], key_len: SecureKeyLen) -> anyhow::Result<[u8; 16]> {
     let (k1, k2) = generate_subkeys(key, key_len)?;
 
     let mut blocks: Vec<[u8; 16]> = Vec::new();
@@ -274,7 +270,10 @@ mod tests {
         let encrypted = encrypt_aes(&key, plaintext, SecureKeyLen::KeyLen128Bits).unwrap();
         let decrypted = decrypt_aes(&key, &encrypted, SecureKeyLen::KeyLen128Bits).unwrap();
 
-        let decrypted = decrypted.into_iter().take_while(|&b| b != 0).collect::<Vec<_>>();
+        let decrypted = decrypted
+            .into_iter()
+            .take_while(|&b| b != 0)
+            .collect::<Vec<_>>();
 
         assert_eq!(&decrypted[..], plaintext);
     }

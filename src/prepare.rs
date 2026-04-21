@@ -149,7 +149,10 @@ fn load_prepare_template(custom_template_file: Option<&Path>) -> anyhow::Result<
         None => Image::parse(DEFAULT_PREPARE_TEMPLATE_HEX),
         Some(path) => {
             let s = path.to_str().ok_or_else(|| {
-                anyhow::anyhow!("prepare template path is not valid UTF-8: {}", path.display())
+                anyhow::anyhow!(
+                    "prepare template path is not valid UTF-8: {}",
+                    path.display()
+                )
             })?;
             let (img, _) = load_image_with_bin_base(s, None)?;
             Ok(img)
@@ -191,11 +194,16 @@ mod tests {
         for slot in [0usize, 1, 2, 4] {
             let ks = img.read_bytes(base + (OFF_KEY_SIZE + slot) as u32, 1)[0];
             let klen = SecureKeyLen::from_u8(ks).unwrap();
-            let row = img.read_bytes(base + (OFF_KEYS + slot * KEY_ROW_BYTES) as u32, KEY_ROW_BYTES);
+            let row = img.read_bytes(
+                base + (OFF_KEYS + slot * KEY_ROW_BYTES) as u32,
+                KEY_ROW_BYTES,
+            );
             let nbytes = klen.key_size_bytes();
             let key: Vec<u8> = row[..nbytes].to_vec();
-            let exp =
-                img.read_bytes(base + (OFF_CIPHER + slot * CIPHER_SLOT_LEN) as u32, CIPHER_SLOT_LEN);
+            let exp = img.read_bytes(
+                base + (OFF_CIPHER + slot * CIPHER_SLOT_LEN) as u32,
+                CIPHER_SLOT_LEN,
+            );
             let ct = encrypt_aes(&key, &plain, klen).unwrap();
             assert_eq!(ct, exp, "slot {}", slot);
         }
@@ -210,21 +218,23 @@ mod tests {
         let slot = 3usize;
         let ks_before = img0.read_bytes(base + (OFF_KEY_SIZE + slot) as u32, 1)[0];
         let klen_before = SecureKeyLen::from_u8(ks_before).unwrap();
-        assert_eq!(klen_before.key_size_bytes(), 24, "fixture slot 3 is 192-bit");
+        assert_eq!(
+            klen_before.key_size_bytes(),
+            24,
+            "fixture slot 3 is 192-bit"
+        );
 
         let key16 = [0x42u8; 16];
         let keys = SecureKeys {
             keys: (0u8..=31u8)
-                .map(|i| {
-                    crate::keys::SecureKey {
-                        index: i,
-                        rindex: 31 - i,
-                        data: if i == slot as u8 {
-                            hex::encode(key16)
-                        } else {
-                            String::new()
-                        },
-                    }
+                .map(|i| crate::keys::SecureKey {
+                    index: i,
+                    rindex: 31 - i,
+                    data: if i == slot as u8 {
+                        hex::encode(key16)
+                    } else {
+                        String::new()
+                    },
                 })
                 .collect(),
         };
@@ -258,16 +268,14 @@ mod tests {
         let key_hex = hex::encode(&row0[..16]);
         let keys = SecureKeys {
             keys: (0u8..=31u8)
-                .map(|i| {
-                    crate::keys::SecureKey {
-                        index: i,
-                        rindex: 31 - i,
-                        data: if i == 0 {
-                            key_hex.clone()
-                        } else {
-                            String::new()
-                        },
-                    }
+                .map(|i| crate::keys::SecureKey {
+                    index: i,
+                    rindex: 31 - i,
+                    data: if i == 0 {
+                        key_hex.clone()
+                    } else {
+                        String::new()
+                    },
                 })
                 .collect(),
         };

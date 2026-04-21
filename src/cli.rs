@@ -6,11 +6,11 @@ use log::info;
 use crate::crypto::cmac_aes;
 use crate::image::{load_image, load_image_with_bin_base};
 use crate::keys::SecureKeys;
-use crate::types::{SecureGroup, SecureHeader, SecureSection};
 use crate::prepare::patch_prepare_firmware;
 use crate::secure_image::{
     generate_key_file, sign_firmware, validate_section_firmware_bounds, verify_firmware,
 };
+use crate::types::{SecureGroup, SecureHeader, SecureSection};
 
 #[derive(Parser, Debug)]
 #[command(name = "ytm_sign_tool")]
@@ -33,30 +33,32 @@ pub enum Commands {
         input: String,
         #[arg(short, long, help = "Keys configuration (JSON)")]
         keys: String,
-        #[arg(
-            short,
-            long,
-            help = "Output file path or directory"
-        )]
+        #[arg(short, long, help = "Output file path or directory")]
         output: Option<String>,
-        #[arg(
-            short = 't',
-            long,
-            help = "Output format: hex, bin, s19"
-        )]
+        #[arg(short = 't', long, help = "Output format: hex, bin, s19")]
         format: Option<String>,
-        #[arg(long, help = "Base address of the binary output (hex, e.g. 0x20000000)")]
+        #[arg(
+            long,
+            help = "Base address of the binary output (hex, e.g. 0x20000000)"
+        )]
         base: Option<String>,
         #[arg(long, help = "Size of the binary output (hex, e.g. 0x80000)")]
         size: Option<String>,
-        #[arg(long, help = "Optional secure boot image file path (will be merged into the firmware image)")]
+        #[arg(
+            long,
+            help = "Optional secure boot image file path (will be merged into the firmware image)"
+        )]
         boot: Option<String>,
     },
     #[command(about = "Verify firmware")]
     Verify {
         #[arg(short, long, help = "Firmware file to verify")]
         input: String,
-        #[arg(short, long, help = "Keys configuration (JSON), used to verify CMAC values")]
+        #[arg(
+            short,
+            long,
+            help = "Keys configuration (JSON), used to verify CMAC values"
+        )]
         keys: Option<String>,
         #[arg(
             long,
@@ -64,7 +66,11 @@ pub enum Commands {
         )]
         base: Option<String>,
     },
-    #[command(name = "keygen", alias = "genkey", about = "Generate AES keys configuration")]
+    #[command(
+        name = "keygen",
+        alias = "genkey",
+        about = "Generate AES keys configuration"
+    )]
     Keygen {
         #[arg(
             short,
@@ -77,11 +83,7 @@ pub enum Commands {
             help = "BIN load base (hex, e.g. 0x4000) when input is raw binary; if omitted, inferred when possible"
         )]
         base: Option<String>,
-        #[arg(
-            short,
-            long,
-            help = "Output JSON file path or directory"
-        )]
+        #[arg(short, long, help = "Output JSON file path or directory")]
         output: Option<String>,
     },
     #[command(
@@ -90,17 +92,9 @@ pub enum Commands {
     Prepare {
         #[arg(short, long, help = "Keys configuration (JSON)")]
         keys: String,
-        #[arg(
-            short,
-            long,
-            help = "Output file path or directory"
-        )]
+        #[arg(short, long, help = "Output file path or directory")]
         output: Option<String>,
-        #[arg(
-            short = 't',
-            long,
-            help = "Output format: hex, bin, s19"
-        )]
+        #[arg(short = 't', long, help = "Output format: hex, bin, s19")]
         format: Option<String>,
         #[arg(
             long = "template",
@@ -128,19 +122,14 @@ pub enum Commands {
     Convert {
         #[arg(short, long, help = "Input file")]
         input: String,
-        #[arg(
-            short,
-            long,
-            help = "Output file path or directory"
-        )]
+        #[arg(short, long, help = "Output file path or directory")]
         output: Option<String>,
-        #[arg(
-            short = 't',
-            long,
-            help = "Output format: hex, bin, s19"
-        )]
+        #[arg(short = 't', long, help = "Output format: hex, bin, s19")]
         format: Option<String>,
-        #[arg(long, help = "Base address of the binary input/output (hex, e.g. 0x4000)")]
+        #[arg(
+            long,
+            help = "Base address of the binary input/output (hex, e.g. 0x4000)"
+        )]
         base: Option<String>,
     },
 }
@@ -243,7 +232,10 @@ fn resolve_output_path_and_format(
     }
 }
 
-fn resolve_keygen_output_path(input: Option<&str>, output: Option<&str>) -> anyhow::Result<PathBuf> {
+fn resolve_keygen_output_path(
+    input: Option<&str>,
+    output: Option<&str>,
+) -> anyhow::Result<PathBuf> {
     match (input, output) {
         (None, None) => Ok(std::env::current_dir()?.join("keys.json")),
         (Some(inp), None) => {
@@ -338,9 +330,7 @@ fn log_inferred_binary_base_hint(inferred_bin_base: Option<u32>, err_msg: &str) 
 }
 
 fn verify_problems_may_indicate_wrong_load_base(problems: &[String]) -> bool {
-    !problems
-        .iter()
-        .all(|p| p.contains("no key for key_slot"))
+    !problems.iter().all(|p| p.contains("no key for key_slot"))
 }
 
 fn log_inferred_binary_base_hint_for_verify_problems(
@@ -367,10 +357,7 @@ pub fn cmd_sign(
 ) -> anyhow::Result<()> {
     let keys = SecureKeys::from_file(keys_path)?;
 
-    let base_addr = base
-        .as_ref()
-        .map(|b| parse_hex_or_decimal(b))
-        .transpose()?;
+    let base_addr = base.as_ref().map(|b| parse_hex_or_decimal(b)).transpose()?;
     let mut image = load_image(input, base_addr)?;
 
     if let Some(boot_path) = boot {
@@ -382,7 +369,8 @@ pub fn cmd_sign(
 
     let signed = sign_firmware(image, &keys)?;
 
-    let (output_path, output_format) = resolve_output_path_and_format(input, output, format, "signed")?;
+    let (output_path, output_format) =
+        resolve_output_path_and_format(input, output, format, "signed")?;
     ensure_parent_dir_for_file(&output_path)?;
 
     let bin_region = if output_format == "bin" {
@@ -427,14 +415,8 @@ pub fn cmd_sign(
     Ok(())
 }
 
-pub fn cmd_verify(
-    input: &str,
-    keys_path: Option<&str>,
-    base: Option<&str>,
-) -> anyhow::Result<()> {
-    let base_u32 = base
-        .map(|b| parse_hex_or_decimal(b))
-        .transpose()?;
+pub fn cmd_verify(input: &str, keys_path: Option<&str>, base: Option<&str>) -> anyhow::Result<()> {
+    let base_u32 = base.map(|b| parse_hex_or_decimal(b)).transpose()?;
     let (image, bin_meta) = load_image_with_bin_base(input, base_u32)?;
     let inferred_bin_base = bin_meta.and_then(|(b, inferred)| inferred.then_some(b));
 
@@ -471,7 +453,9 @@ pub fn cmd_verify(
         if !section.is_valid() {
             problems.push(format!(
                 "section {}: marker 0x{:04X} invalid (expected 0x{:04X})",
-                i, section.get_marker(), SecureSection::default_marker()
+                i,
+                section.get_marker(),
+                SecureSection::default_marker()
             ));
         }
     }
@@ -486,10 +470,11 @@ pub fn cmd_verify(
                     log_inferred_binary_base_hint(inferred_bin_base, &msg);
                     e
                 })?;
-                let firmware_data =
-                    signed.image.read_bytes(section.start_addr, section.length as usize);
-                let calculated_cmac = cmac_aes(&key, &firmware_data, section.key_size)
-                    .map_err(|e| {
+                let firmware_data = signed
+                    .image
+                    .read_bytes(section.start_addr, section.length as usize);
+                let calculated_cmac =
+                    cmac_aes(&key, &firmware_data, section.key_size).map_err(|e| {
                         let msg = e.to_string();
                         log_inferred_binary_base_hint(inferred_bin_base, &msg);
                         e
@@ -517,7 +502,10 @@ pub fn cmd_verify(
 
     if !problems.is_empty() {
         log_inferred_binary_base_hint_for_verify_problems(inferred_bin_base, &problems);
-        return Err(anyhow::anyhow!("verification failed:\n{}", problems.join("\n")));
+        return Err(anyhow::anyhow!(
+            "verification failed:\n{}",
+            problems.join("\n")
+        ));
     }
 
     info!("verify: {} — OK", input);
@@ -590,14 +578,8 @@ pub fn cmd_prepare(
     Ok(())
 }
 
-pub fn cmd_info(
-    input: &str,
-    keys_path: Option<&str>,
-    base: Option<&str>,
-) -> anyhow::Result<()> {
-    let base_u32 = base
-        .map(parse_hex_or_decimal)
-        .transpose()?;
+pub fn cmd_info(input: &str, keys_path: Option<&str>, base: Option<&str>) -> anyhow::Result<()> {
+    let base_u32 = base.map(parse_hex_or_decimal).transpose()?;
     let (image, bin_meta) = load_image_with_bin_base(input, base_u32)?;
     let inferred_bin_base = bin_meta.and_then(|(b, inferred)| inferred.then_some(b));
 
@@ -622,27 +604,50 @@ pub fn cmd_info(
         }
     })?;
 
-    info!("\n=== BVT (Boot Vector Table) @ 0x{:08X} ===", signed.bvt_addr);
+    info!(
+        "\n=== BVT (Boot Vector Table) @ 0x{:08X} ===",
+        signed.bvt_addr
+    );
     info!(
         "  Image Vector Table Marker: 0x{:08X} ({})",
         signed.header.get_marker(),
-        if signed.header.is_valid() { "Valid" } else { "Invalid" }
+        if signed.header.is_valid() {
+            "Valid"
+        } else {
+            "Invalid"
+        }
     );
-    info!("  Boot Configuration Word: 0x{:08X}", signed.header.get_word());
+    info!(
+        "  Boot Configuration Word: 0x{:08X}",
+        signed.header.get_word()
+    );
     info!(
         "  Secure Boot Group Configuration Address: 0x{:08X}",
         signed.header.get_group_addr()
     );
-    info!("  Application Start Address: 0x{:08X}", signed.header.get_app_addr());
+    info!(
+        "  Application Start Address: 0x{:08X}",
+        signed.header.get_app_addr()
+    );
     info!("  APP_WDG_TIMEOUT: {}", signed.header.get_app_wdg());
 
-    info!("\n=== Secure Boot Group @ 0x{:08X} ===", signed.header.get_group_addr());
+    info!(
+        "\n=== Secure Boot Group @ 0x{:08X} ===",
+        signed.header.get_group_addr()
+    );
     info!(
         "  Configuration Group Marker: 0x{:08X} ({})",
         signed.group.get_marker(),
-        if signed.group.is_valid() { "Valid" } else { "Invalid" }
+        if signed.group.is_valid() {
+            "Valid"
+        } else {
+            "Invalid"
+        }
     );
-    info!("  Secure Boot Section Number: {}", signed.group.get_section_num());
+    info!(
+        "  Secure Boot Section Number: {}",
+        signed.group.get_section_num()
+    );
     info!("  Encryption Flag: {}", signed.group.is_encrypt());
     info!("  AES Key Type/Size: {:?}", signed.group.get_key_size());
     info!("  Key Slot: {}", signed.group.get_key_slot());
@@ -650,16 +655,27 @@ pub fn cmd_info(
     info!("\n=== Secure Boot Section ===");
     for (i, section) in signed.sections.iter().enumerate() {
         info!("  --------------------------------");
-        info!("  Section {} @ 0x{:08X}", i, signed.group.get_section_addr(i));
+        info!(
+            "  Section {} @ 0x{:08X}",
+            i,
+            signed.group.get_section_addr(i)
+        );
         info!("  --------------------------------");
         info!(
             "  Configuration Section Marker: 0x{:04X} ({})",
             section.get_marker(),
-            if section.is_valid() { "Valid" } else { "Invalid" }
+            if section.is_valid() {
+                "Valid"
+            } else {
+                "Invalid"
+            }
         );
         info!("  AES Key Type/Size: {:?}", section.get_key_size());
         info!("  Key Slot: {}", section.get_key_slot());
-        info!("  Section Start Address: 0x{:08X}", section.get_start_addr());
+        info!(
+            "  Section Start Address: 0x{:08X}",
+            section.get_start_addr()
+        );
         info!("  Length: 0x{:08X}", section.get_length());
         info!("  CMAC Address: 0x{:08X}", section.get_cmac_addr());
         info!("  CMAC Result: {:02X?}", signed.get_cmac_at(i));
@@ -674,10 +690,7 @@ pub fn cmd_convert(
     format: Option<&str>,
     base: Option<&str>,
 ) -> anyhow::Result<()> {
-    let base_addr = base
-        .as_ref()
-        .map(|b| parse_hex_or_decimal(b))
-        .transpose()?;
+    let base_addr = base.as_ref().map(|b| parse_hex_or_decimal(b)).transpose()?;
 
     let image = load_image(input, base_addr)?;
 
@@ -745,26 +758,56 @@ mod tests {
     #[test]
     fn test_resolve_output_format() {
         assert_eq!(resolve_output_format(None, "test.bin").unwrap(), "bin");
-        assert_eq!(resolve_output_format(Some("bin"), "test.bin").unwrap(), "bin");
-        assert_eq!(resolve_output_format(Some("s19"), "test.bin").unwrap(), "s19");
-        assert_eq!(resolve_output_format(Some("hex"), "test.bin").unwrap(), "hex");
-        assert_eq!(resolve_output_format(Some("bin"), "test.s19").unwrap(), "bin");
-        assert_eq!(resolve_output_format(Some("s19"), "test.s19").unwrap(), "s19");
-        assert_eq!(resolve_output_format(Some("hex"), "test.s19").unwrap(), "hex");
-        assert_eq!(resolve_output_format(Some("bin"), "test.hex").unwrap(), "bin");
-        assert_eq!(resolve_output_format(Some("s19"), "test.hex").unwrap(), "s19");
-        assert_eq!(resolve_output_format(Some("hex"), "test.hex").unwrap(), "hex");
+        assert_eq!(
+            resolve_output_format(Some("bin"), "test.bin").unwrap(),
+            "bin"
+        );
+        assert_eq!(
+            resolve_output_format(Some("s19"), "test.bin").unwrap(),
+            "s19"
+        );
+        assert_eq!(
+            resolve_output_format(Some("hex"), "test.bin").unwrap(),
+            "hex"
+        );
+        assert_eq!(
+            resolve_output_format(Some("bin"), "test.s19").unwrap(),
+            "bin"
+        );
+        assert_eq!(
+            resolve_output_format(Some("s19"), "test.s19").unwrap(),
+            "s19"
+        );
+        assert_eq!(
+            resolve_output_format(Some("hex"), "test.s19").unwrap(),
+            "hex"
+        );
+        assert_eq!(
+            resolve_output_format(Some("bin"), "test.hex").unwrap(),
+            "bin"
+        );
+        assert_eq!(
+            resolve_output_format(Some("s19"), "test.hex").unwrap(),
+            "s19"
+        );
+        assert_eq!(
+            resolve_output_format(Some("hex"), "test.hex").unwrap(),
+            "hex"
+        );
     }
     #[test]
     fn test_resolve_output_path_and_format() {
         let cwd = std::env::current_dir().unwrap();
-        let (path, format) = resolve_output_path_and_format("test.bin", None, None, "test").unwrap();
+        let (path, format) =
+            resolve_output_path_and_format("test.bin", None, None, "test").unwrap();
         assert_eq!(path, cwd.join("test_test.bin"));
         assert_eq!(format, "bin");
-        let (path, format) = resolve_output_path_and_format("test.bin", Some("test.bin"), None, "signed").unwrap();
+        let (path, format) =
+            resolve_output_path_and_format("test.bin", Some("test.bin"), None, "signed").unwrap();
         assert_eq!(path, PathBuf::from("test.bin"));
         assert_eq!(format, "bin");
-        let (path, format) = resolve_output_path_and_format("test.bin", Some("test.s19"), None, "test").unwrap();
+        let (path, format) =
+            resolve_output_path_and_format("test.bin", Some("test.s19"), None, "test").unwrap();
         assert_eq!(path, PathBuf::from("test.s19"));
         assert_eq!(format, "s19");
     }
@@ -791,23 +834,104 @@ mod tests {
     #[test]
     fn test_cmd_sign() {
         let keys = "config/sign_keys.json";
-        cmd_sign("images/unsigned.bin", keys, Some("target/test/bin_signed.bin"), None, None, None, None).unwrap();
+        cmd_sign(
+            "images/unsigned.bin",
+            keys,
+            Some("target/test/bin_signed.bin"),
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         assert!(Path::new("target/test/bin_signed.bin").exists());
-        cmd_sign("images/unsigned.bin", keys, Some("target/test/bin_signed.hex"), None, None, None, None).unwrap();
+        cmd_sign(
+            "images/unsigned.bin",
+            keys,
+            Some("target/test/bin_signed.hex"),
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         assert!(Path::new("target/test/bin_signed.hex").exists());
-        cmd_sign("images/unsigned.bin", keys, Some("target/test/bin_signed.s19"), None, None, None, None).unwrap();
+        cmd_sign(
+            "images/unsigned.bin",
+            keys,
+            Some("target/test/bin_signed.s19"),
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         assert!(Path::new("target/test/bin_signed.s19").exists());
-        cmd_sign("images/unsigned.hex", keys, Some("target/test/hex_signed.bin"), None, None, None, None).unwrap();
+        cmd_sign(
+            "images/unsigned.hex",
+            keys,
+            Some("target/test/hex_signed.bin"),
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         assert!(Path::new("target/test/hex_signed.bin").exists());
-        cmd_sign("images/unsigned.hex", keys, Some("target/test/hex_signed.hex"), None, None, None, None).unwrap();
+        cmd_sign(
+            "images/unsigned.hex",
+            keys,
+            Some("target/test/hex_signed.hex"),
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         assert!(Path::new("target/test/hex_signed.hex").exists());
-        cmd_sign("images/unsigned.hex", keys, Some("target/test/hex_signed.s19"), None, None, None, None).unwrap();
+        cmd_sign(
+            "images/unsigned.hex",
+            keys,
+            Some("target/test/hex_signed.s19"),
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         assert!(Path::new("target/test/hex_signed.s19").exists());
-        cmd_sign("images/unsigned.s19", keys, Some("target/test/s19_signed.bin"), None, None, None, None).unwrap();
+        cmd_sign(
+            "images/unsigned.s19",
+            keys,
+            Some("target/test/s19_signed.bin"),
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         assert!(Path::new("target/test/s19_signed.bin").exists());
-        cmd_sign("images/unsigned.s19", keys, Some("target/test/s19_signed.hex"), None, None, None, None).unwrap();
+        cmd_sign(
+            "images/unsigned.s19",
+            keys,
+            Some("target/test/s19_signed.hex"),
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         assert!(Path::new("target/test/s19_signed.hex").exists());
-        cmd_sign("images/unsigned.s19", keys, Some("target/test/s19_signed.s19"), None, None, None, None).unwrap();
+        cmd_sign(
+            "images/unsigned.s19",
+            keys,
+            Some("target/test/s19_signed.s19"),
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
         assert!(Path::new("target/test/s19_signed.s19").exists());
     }
     #[test]
@@ -846,11 +970,26 @@ mod tests {
     fn test_cmd_keygen() {
         cmd_keygen(None, None, Some("target/test/none_keys.json")).unwrap();
         assert!(Path::new("target/test/none_keys.json").exists());
-        cmd_keygen(Some("images/unsigned.bin"), None, Some("target/test/bin_keys.json")).unwrap();
+        cmd_keygen(
+            Some("images/unsigned.bin"),
+            None,
+            Some("target/test/bin_keys.json"),
+        )
+        .unwrap();
         assert!(Path::new("target/test/bin_keys.json").exists());
-        cmd_keygen(Some("images/unsigned.hex"), None, Some("target/test/hex_keys.json")).unwrap();
+        cmd_keygen(
+            Some("images/unsigned.hex"),
+            None,
+            Some("target/test/hex_keys.json"),
+        )
+        .unwrap();
         assert!(Path::new("target/test/hex_keys.json").exists());
-        cmd_keygen(Some("images/unsigned.s19"), None, Some("target/test/s19_keys.json")).unwrap();
+        cmd_keygen(
+            Some("images/unsigned.s19"),
+            None,
+            Some("target/test/s19_keys.json"),
+        )
+        .unwrap();
         assert!(Path::new("target/test/s19_keys.json").exists());
     }
 

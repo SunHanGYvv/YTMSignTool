@@ -5,7 +5,7 @@ use rand::RngCore;
 use crate::crypto::{cmac_aes, decrypt_aes, encrypt_aes};
 use crate::image::Image;
 use crate::keys::SecureKeys;
-use crate::types::{SecureHeader, SecureKeyLen, SecureGroup, SecureSection};
+use crate::types::{SecureGroup, SecureHeader, SecureKeyLen, SecureSection};
 
 pub const MAX_SECURE_BOOT_SECT_NUM: usize = 8;
 
@@ -64,17 +64,16 @@ impl SecureImage {
         let group = load_secure_boot_group(&self.image, &self.header)?;
         self.group = group;
 
-        self.sections =
-            load_secure_boot_sections(&self.image, &self.group, Some(keys))?;
+        self.sections = load_secure_boot_sections(&self.image, &self.group, Some(keys))?;
 
         let mut sorted = self.sections.clone();
         sort_sections_by_cmac_addr_desc(&mut sorted);
 
         self.cmacs.clear();
         for section in &sorted {
-            let key = keys
-                .get_key_by_index(section.key_slot)
-                .ok_or_else(|| anyhow::anyhow!("Key slot {} corresponding key", section.key_slot))?;
+            let key = keys.get_key_by_index(section.key_slot).ok_or_else(|| {
+                anyhow::anyhow!("Key slot {} corresponding key", section.key_slot)
+            })?;
 
             if key.len() != section.key_size.key_size_bytes() {
                 return Err(anyhow::anyhow!(
@@ -118,10 +117,12 @@ impl SecureImage {
             if self.group.is_encrypt() {
                 let key = keys
                     .get_key_by_index(self.group.get_key_slot())
-                    .ok_or_else(|| anyhow::anyhow!(
-                        "Group encryption requires key for key_slot {}",
-                        self.group.get_key_slot()
-                    ))?;
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Group encryption requires key for key_slot {}",
+                            self.group.get_key_slot()
+                        )
+                    })?;
                 if key.len() != self.group.get_key_size().key_size_bytes() {
                     return Err(anyhow::anyhow!(
                         "Group key length should be {} bytes",
@@ -148,8 +149,7 @@ impl SecureImage {
         format: &str,
         bin_region: Option<(u32, usize)>,
     ) -> anyhow::Result<()> {
-        self.image
-            .write_image_format(path, format, bin_region)
+        self.image.write_image_format(path, format, bin_region)
     }
 
     pub fn sb_sections_cmac_order(&self) -> Vec<SecureSection> {
@@ -168,10 +168,7 @@ impl SecureImage {
     }
 }
 
-pub fn verify_firmware(
-    image: Image,
-    keys: Option<&SecureKeys>,
-) -> anyhow::Result<SecureImage> {
+pub fn verify_firmware(image: Image, keys: Option<&SecureKeys>) -> anyhow::Result<SecureImage> {
     let (header, bvt_addr) = find_bvt_header(&image)?;
     let group = load_secure_boot_group(&image, &header)?;
 
@@ -298,7 +295,9 @@ fn find_bvt_header(img: &Image) -> anyhow::Result<(SecureHeader, u32)> {
     if let Some((min_a, max_a)) = dense_map_address_span(img) {
         for addr in (min_a..=max_a).step_by(4) {
             if let Some(raw) = read_exact_48(img, addr) {
-                if u32::from_le_bytes(raw[0..4].try_into().unwrap()) == SecureHeader::default_marker() {
+                if u32::from_le_bytes(raw[0..4].try_into().unwrap())
+                    == SecureHeader::default_marker()
+                {
                     return Ok((SecureHeader::from_bytes(&raw)?, addr));
                 }
             }
@@ -309,14 +308,18 @@ fn find_bvt_header(img: &Image) -> anyhow::Result<(SecureHeader, u32)> {
                 continue;
             }
             if let Some(raw) = read_exact_48(img, addr) {
-                if u32::from_le_bytes(raw[0..4].try_into().unwrap()) == SecureHeader::default_marker() {
+                if u32::from_le_bytes(raw[0..4].try_into().unwrap())
+                    == SecureHeader::default_marker()
+                {
                     return Ok((SecureHeader::from_bytes(&raw)?, addr));
                 }
             }
         }
     }
 
-    Err(anyhow::anyhow!("No valid bvt_header_config_t (BVT magic number) found"))
+    Err(anyhow::anyhow!(
+        "No valid bvt_header_config_t (BVT magic number) found"
+    ))
 }
 
 fn read_exact_48(img: &Image, addr: u32) -> Option<[u8; 48]> {
@@ -386,7 +389,8 @@ fn load_secure_boot_group(img: &Image, header: &SecureHeader) -> anyhow::Result<
     }
 
     Err(anyhow::anyhow!(
-        "No valid group magic marker 0x{:08X} found", SecureGroup::default_marker()
+        "No valid group magic marker 0x{:08X} found",
+        SecureGroup::default_marker()
     ))
 }
 
