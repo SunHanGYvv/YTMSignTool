@@ -2,6 +2,7 @@
 name = "ytm_sign_tool"
 version = "0.1.1"
 edition = "2021"
+build = "build.rs"
 description = "YTM32 MCU Firmware Signing Tool for Secure Boot"
 authors = ["HanG"]
 license = "MIT"

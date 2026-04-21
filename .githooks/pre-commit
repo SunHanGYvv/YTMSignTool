@@ -1,0 +1,27 @@
+#!/usr/bin/env sh
+
+set -e
+cd "$(git rev-parse --show-toplevel)"
+
+[ -n "${HOME}" ] && [ -f "${HOME}/.cargo/env" ] && . "${HOME}/.cargo/env"
+[ -n "${USERPROFILE}" ] && [ -f "${USERPROFILE}/.cargo/env" ] && . "${USERPROFILE}/.cargo/env"
+for _cb in "${HOME}/.cargo/bin" "${USERPROFILE}/.cargo/bin" "/usr/local/cargo/bin"; do
+	[ -z "${_cb}" ] && continue
+	[ ! -d "${_cb}" ] && continue
+	case ":${PATH}:" in
+		*":${_cb}:"*) ;;
+		*) export PATH="${_cb}:${PATH}" ;;
+	esac
+done
+unset _cb
+
+if ! command -v cargo >/dev/null 2>&1; then
+	echo "pre-commit: cargo not found, skipping cargo fmt" >&2
+	exit 0
+fi
+
+cargo fmt --all
+
+git diff --name-only -- '*.rs' | while IFS= read -r f; do
+	[ -n "$f" ] && git add "$f"
+done

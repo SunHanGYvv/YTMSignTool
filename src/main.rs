@@ -1,8 +1,8 @@
 mod cli;
 mod crypto;
-mod prepare;
 mod image;
 mod keys;
+mod prepare;
 mod secure_image;
 mod types;
 
@@ -63,7 +63,11 @@ fn run(cli: Cli) -> anyhow::Result<()> {
         Commands::Verify { input, keys, base } => {
             cmd_verify(&input, keys.as_deref(), base.as_deref())?;
         }
-        Commands::Keygen { input, base, output } => {
+        Commands::Keygen {
+            input,
+            base,
+            output,
+        } => {
             cmd_keygen(input.as_deref(), base.as_deref(), output.as_deref())?;
         }
         Commands::Prepare {
