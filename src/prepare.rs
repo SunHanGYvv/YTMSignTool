@@ -224,14 +224,18 @@ mod tests {
             "fixture slot 3 is 192-bit"
         );
 
-        let key16 = [0x42u8; 16];
+        let row_before = img0.read_bytes(
+            base + (OFF_KEYS + slot * KEY_ROW_BYTES) as u32,
+            KEY_ROW_BYTES,
+        );
+        let key16 = row_before[..16].to_vec();
         let keys = SecureKeys {
             keys: (0u8..=31u8)
                 .map(|i| crate::keys::SecureKey {
                     index: i,
                     rindex: 31 - i,
                     data: if i == slot as u8 {
-                        hex::encode(key16)
+                        hex::encode(&key16)
                     } else {
                         String::new()
                     },
