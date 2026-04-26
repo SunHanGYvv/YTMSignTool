@@ -13,9 +13,9 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 clap = { version = "4.0", features = ["derive", "wrap_help"] }
 hex = "0.4"
-aes = "0.8"
+aes = "0.9"
 anyhow = "1.0"
-rand = "0.8"
+rand = "0.10"
 log = "0.4"
 env_logger = "0.11"
 srec = "0.2"
