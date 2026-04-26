@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use rand::RngCore;
+use rand::Rng;
 
 use crate::crypto::{cmac_aes, decrypt_aes, encrypt_aes};
 use crate::image::Image;
@@ -251,7 +251,7 @@ pub fn keys_config_from_signed_firmware(signed: &SecureImage) -> anyhow::Result<
     }
 
     let mut cfg = SecureKeys::empty_template_32();
-    let mut rng = rand::thread_rng();
+    let mut rng = rand::rng();
     for (slot, klen) in need {
         let n = klen.key_size_bytes();
         let mut raw = vec![0u8; n];

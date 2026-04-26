@@ -1,4 +1,4 @@
-use aes::cipher::{BlockDecrypt, BlockEncrypt, InvalidLength, KeyInit};
+use aes::cipher::{BlockCipherDecrypt, BlockCipherEncrypt, InvalidLength, KeyInit};
 use aes::{Aes128, Aes192, Aes256};
 
 use crate::types::SecureKeyLen;
